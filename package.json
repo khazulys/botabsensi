@@ -1,0 +1,38 @@
+{
+  "name": "tailwind-termux",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "postcss src/input.css -o public/dist/output.css",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "postcss-cli": "^11.0.1",
+    "tailwindcss": "^3.3.5"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "axios": "^1.10.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "imgur-uploader": "^4.2.1",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.6.0",
+    "mongoose": "^8.16.2",
+    "node-cron": "^4.2.1",
+    "pino": "^9.7.0",
+    "qrcode-terminal": "^0.12.0",
+    "socket.io": "^4.8.1"
+  }
+}

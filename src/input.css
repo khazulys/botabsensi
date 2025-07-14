@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* css/style.css */
+
+.chart-container {
+  position: relative; /* Menjadikan wadah sebagai acuan posisi */
+}
+
+.chart-center-text {
+  position: absolute; /* Mengeluarkan teks dari alur normal */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Trik untuk memusatkan elemen secara sempurna */
+  text-align: center; /* Memastikan teks di dalamnya rata tengah */
+  pointer-events: none; /* Agar teks tidak mengganggu interaksi mouse dengan chart */
+}
+
+/* Custom style for the toggle switch */
+.toggle-checkbox:checked {
+    right: 0;
+    border-color: #3b82f6; /* blue-500 */
+}
+.toggle-checkbox:checked + .toggle-label {
+    background-color: #3b82f6; /* blue-500 */
+}
+.swal2-styled {
+    padding: 0.625em 1.5em;
+    font-size: 1em;
+    border: none;
+    border-radius: 0.25em;
+}

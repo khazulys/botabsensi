@@ -1,0 +1,1485 @@
+document.addEventListener('DOMContentLoaded', function () {
+    // ===== ELEMEN =====
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const openBtn = document.getElementById('open-sidebar-btn');
+    const closeBtn = document.getElementById('close-sidebar-btn');
+    const navLinksContainer = document.getElementById('nav-links');
+    const pageTitle = document.getElementById('page-title');
+    const allPages = document.querySelectorAll('.page-content');
+    const addKaryawanModal = document.getElementById('add-karyawan-modal');
+    const addKaryawanBtn = document.getElementById('add-karyawan-btn');
+    const cancelKaryawanBtn = document.getElementById('cancel-karyawan-modal-btn');
+    const saveKaryawanBtn = document.getElementById('save-karyawan-modal-btn'); // Ini tombol simpan dari modal
+    const addKaryawanForm = document.getElementById('add-karyawan-form');
+    const themeToggleButton = document.getElementById('theme-toggle');
+    const darkIcon = document.getElementById('theme-toggle-dark-icon');
+    const lightIcon = document.getElementById('theme-toggle-light-icon');
+
+    const editKaryawanModal = document.getElementById('edit-karyawan-modal');
+    const editKaryawanForm = document.getElementById('edit-karyawan-form');
+    const cancelEditBtn = document.getElementById('cancel-edit-modal-btn');
+    const karyawanTableBody = document.querySelector('#karyawan-table tbody');
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+    
+    // app.js (paling atas)
+    
+    // ===== KONFIGURASI API =====
+    const API_URL = '/api/karyawan';
+
+    // ===== LOGIKA DARK MODE =====
+    // Cek tema saat halaman dimuat
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        lightIcon.classList.remove('hidden');
+    } else {
+        document.documentElement.classList.remove('dark');
+        darkIcon.classList.remove('hidden');
+    }
+
+    // Ganti blok logika event listener lama Anda dengan yang ini
+    themeToggleButton.addEventListener('click', function() {
+        // 1. Ganti ikon terlebih dahulu
+        darkIcon.classList.toggle('hidden');
+        lightIcon.classList.toggle('hidden');
+    
+        // 2. Cek apakah class 'dark' sedang aktif pada elemen <html>
+        if (document.documentElement.classList.contains('dark')) {
+            // Jika ya, hapus class 'dark' untuk beralih ke mode terang
+            document.documentElement.classList.remove('dark');
+            // Simpan preferensi pengguna ke mode terang
+            localStorage.setItem('color-theme', 'light');
+        } else {
+            // Jika tidak, tambahkan class 'dark' untuk beralih ke mode gelap
+            document.documentElement.classList.add('dark');
+            // Simpan preferensi pengguna ke mode gelap
+            localStorage.setItem('color-theme', 'dark');
+        }
+    
+        // 3. Update tema pada chart (jika ada)
+        updateChartsTheme();
+    });
+
+
+
+    // ===== LOGIKA SIDEBAR =====
+    function openSidebar() { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); }
+    function closeSidebar() { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+    openBtn.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
+    
+    // ===== LOGIKA MODAL KARYAWAN =====
+    function openKaryawanModal() { if(addKaryawanModal) addKaryawanModal.classList.remove('hidden'); }
+    function closeKaryawanModal() { if(addKaryawanModal) { addKaryawanModal.classList.add('hidden'); addKaryawanForm.reset(); }}
+    if (addKaryawanBtn) addKaryawanBtn.addEventListener('click', openKaryawanModal);
+    if (cancelKaryawanBtn) cancelKaryawanBtn.addEventListener('click', closeKaryawanModal);
+    if (addKaryawanModal) {
+        addKaryawanModal.addEventListener('click', function(e) {
+            if (e.target === addKaryawanModal) {
+                closeKaryawanModal();
+            }
+        });
+    }
+
+    // ===== LOGIKA SIMPAN & TAMPILKAN KARYAWAN DARI DATABASE =====
+    
+    // Fungsi untuk mengambil data dari API dan menampilkannya di tabel
+    const fetchAndRenderKaryawan = async () => {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Gagal mengambil data dari server');
+
+            const karyawanList = await response.json();
+            const tableBody = document.querySelector('#karyawan-table tbody');
+            tableBody.innerHTML = '';
+
+            karyawanList.forEach(karyawan => {
+                const statusClass = karyawan.status === 'aktif' 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                
+                // PERHATIKAN PERUBAHAN DI BAWAH INI
+                const row = `
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${karyawan.nama}</td>
+                        <td class="px-6 py-4">${karyawan.nomorWa}</td>
+                        <td class="px-6 py-4">${karyawan.pos}</td>
+                        <td class="px-6 py-4">${karyawan.shift}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${karyawan.status}</span></td>
+                        <td class="px-6 py-4 flex gap-3">
+                            <a href="#" class="text-blue-600 dark:text-blue-500 edit-btn" data-id="${karyawan._id}"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="text-red-600 dark:text-red-500 delete-btn" data-id="${karyawan._id}"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+            
+            applyKaryawanFilters();
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            Toast.fire({ icon: 'error', title: 'Oops...', text: 'Gagal memuat data karyawan!' });
+        }
+    };
+    
+    function closeEditModal() {
+        if (editKaryawanModal) editKaryawanModal.classList.add('hidden');
+    }
+    
+    if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditModal);
+    if (editKaryawanModal) {
+        editKaryawanModal.addEventListener('click', (e) => {
+            if (e.target === editKaryawanModal) {
+                closeEditModal();
+            }
+        });
+    }
+
+    // Event Delegation: Mendeteksi klik pada tombol edit di tabel
+    if (karyawanTableBody) {
+        karyawanTableBody.addEventListener('click', async (e) => {
+            const editButton = e.target.closest('.edit-btn');
+            const deleteButton = e.target.closest('.delete-btn'); // <--- Tambahkan ini
+    
+            // Logika untuk tombol Edit (sudah ada)
+            if (editButton) {
+                e.preventDefault();
+                const karyawanId = editButton.dataset.id;
+                
+                try {
+                    // 1. Ambil data karyawan dari API
+                    const response = await fetch(`${API_URL}/${karyawanId}`);
+                    if (!response.ok) throw new Error('Gagal mengambil data karyawan.');
+                    const karyawan = await response.json();
+
+                    // 2. Isi form di modal dengan data tersebut
+                    document.getElementById('edit-karyawan-id').value = karyawan._id;
+                    document.getElementById('edit-nama-karyawan').value = karyawan.nama;
+                    document.getElementById('edit-nomor-wa').value = karyawan.nomorWa;
+                    document.getElementById('edit-pos-karyawan').value = karyawan.pos;
+                    document.getElementById('edit-shift-karyawan').value = karyawan.shift;
+                    document.getElementById('edit-status-karyawan').value = karyawan.status;
+
+                    // 3. Tampilkan modal
+                    editKaryawanModal.classList.remove('hidden');
+
+                } catch (error) {
+                    Toast.fire({ icon: 'error', title: 'Oops...', text: error.message });
+                }
+            }
+            if (deleteButton) {
+                e.preventDefault();
+                const karyawanId = deleteButton.dataset.id;
+    
+                // Tampilkan konfirmasi dengan SweetAlert2
+                Swal.fire({
+                    title: 'Apakah Anda yakin?',
+                    text: "Data yang dihapus tidak dapat dikembalikan!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus!',
+                    cancelButtonText: 'Batal',
+                
+                    // === INI BAGIAN YANG DIPERBARUI ===
+                    // Kita berikan class Tailwind langsung ke tombolnya
+                    customClass: {
+                      confirmButton: 'bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mx-2',
+                      cancelButton: 'bg-red-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mx-2'
+                    },
+                    buttonsStyling: false // Penting: Matikan styling default SweetAlert agar class kita bisa bekerja penuh
+
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        // Jika pengguna mengkonfirmasi, kirim request DELETE
+                        try {
+                            const response = await fetch(`${API_URL}/${karyawanId}`, {
+                                method: 'DELETE'
+                            });
+    
+                            if (!response.ok) {
+                                throw new Error('Gagal menghapus data.');
+                            }
+    
+                            // Tampilkan notifikasi sukses
+                            Toast.fire(
+                                'Dihapus!',
+                                'Data karyawan telah berhasil dihapus.',
+                                'success'
+                            );
+    
+                            // Refresh tabel untuk menampilkan perubahan
+                            fetchAndRenderKaryawan();
+    
+                        } catch (error) {
+                            Toast.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: error.message
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // Event listener untuk form submit (UPDATE)
+    if (editKaryawanForm) {
+        editKaryawanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('edit-karyawan-id').value;
+            const updatedData = {
+                nama: document.getElementById('edit-nama-karyawan').value,
+                nomorWa: document.getElementById('edit-nomor-wa').value,
+                pos: document.getElementById('edit-pos-karyawan').value,
+                shift: document.getElementById('edit-shift-karyawan').value,
+                status: document.getElementById('edit-status-karyawan').value,
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+
+                if (!response.ok) throw new Error('Gagal memperbarui data.');
+                
+                closeEditModal();
+                Toast.fire({ icon: 'success', title: 'Berhasil!', text: 'Data karyawan telah diperbarui.' });
+                fetchAndRenderKaryawan(); // Refresh tabel
+
+            } catch (error) {
+                Toast.fire({ icon: 'error', title: 'Oops...', text: error.message });
+            }
+        });
+    }
+
+    if (saveKaryawanBtn) {
+        saveKaryawanBtn.addEventListener('click', async function () {
+            const nama = document.getElementById('nama-karyawan-input').value.trim();
+            const nomorWa = document.getElementById('nomor-wa-input').value.trim();
+            const pos = document.getElementById('pos-karyawan-input').value;
+            const shift = document.getElementById('shift-karyawan-input').value;
+            const status = document.getElementById('status-karyawan-input').value;
+    
+            if (!nama || !nomorWa || !pos || !shift) {
+                Swal.fire({ icon: 'error', title: 'Oops...', text: 'Semua field harus diisi!' });
+                return;
+            }
+    
+            const newKaryawanData = { nama, nomorWa, pos, shift, status };
+    
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newKaryawanData)
+                });
+    
+                const result = await response.json(); // selalu parse JSON
+    
+                if (!response.ok) {
+                    // Tangani error duplikat dengan toast
+                    if (result.message.includes('sudah ada')) {
+                        return Toast.fire({
+                            icon: 'warning',
+                            title: 'Karyawan sudah terdaftar',
+                            text: result.message
+                        });
+                    }
+    
+                    // Tangani error lainnya
+                    throw new Error(result.message || 'Gagal menyimpan data');
+                }
+    
+                Toast.fire({ icon: 'success', title: 'Data berhasil disimpan' });
+    
+                closeKaryawanModal();
+                fetchAndRenderKaryawan(); // Muat ulang data
+    
+            } catch (error) {
+                console.error('Error saving data:', error);
+                Toast.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message });
+            }
+        });
+    }
+
+    // ===== LOGIKA NAVIGASI HALAMAN =====
+    navLinksContainer.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+        e.preventDefault();
+        const targetId = link.dataset.target;
+        const targetPage = document.getElementById(targetId);
+        if (targetPage) {
+            allPages.forEach(page => page.classList.add('hidden'));
+            targetPage.classList.remove('hidden');
+            pageTitle.textContent = link.querySelector('span').textContent;
+            navLinksContainer.querySelectorAll('a').forEach(l => {
+                l.classList.remove('bg-blue-50', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-white', 'font-semibold');
+                l.classList.add('text-gray-700', 'dark:text-gray-300');
+            });
+            link.classList.add('bg-blue-50', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-white', 'font-semibold');
+            link.classList.remove('text-gray-700', 'dark:text-gray-300');
+        }
+        closeSidebar();
+    });
+
+    // ===== LOGIKA TOGGLE PASSWORD =====
+    document.body.addEventListener('click', function(e) {
+        const toggleBtn = e.target.closest('.toggle-password');
+        if (!toggleBtn) return;
+        const passwordSpan = toggleBtn.previousElementSibling;
+        const icon = toggleBtn.querySelector('i');
+        if (passwordSpan.textContent === '••••••••') {
+            passwordSpan.textContent = passwordSpan.dataset.password;
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            passwordSpan.textContent = '••••••••';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    });
+
+    // ===== LOGIKA TOGGLE SHIFT =====
+    document.querySelectorAll('.shift-setting-card').forEach(card => {
+        const toggle = card.querySelector('.toggle-checkbox');
+        const inputs = card.querySelectorAll('input[type="time"]');
+        
+        function updateInputsState() {
+            inputs.forEach(input => {
+                input.disabled = !toggle.checked;
+                input.classList.toggle('bg-gray-200', !toggle.checked);
+                input.classList.toggle('dark:bg-gray-800', !toggle.checked);
+                input.classList.toggle('cursor-not-allowed', !toggle.checked);
+                input.classList.toggle('bg-gray-50', toggle.checked);
+                input.classList.toggle('dark:bg-gray-700', toggle.checked);
+            });
+        }
+
+        toggle.addEventListener('change', updateInputsState);
+        updateInputsState();
+    });
+
+    // ===== LOGIKA FILTER KARYAWAN =====
+    const karyawanFilterForm = document.getElementById('karyawan-filter-form');
+    
+    function applyKaryawanFilters() {
+        const searchVal = document.getElementById('search-karyawan').value.toLowerCase();
+        const statusVal = document.getElementById('status-karyawan-filter').value.toLowerCase();
+        const shiftVal = document.getElementById('shift-karyawan-filter').value.toLowerCase();
+        const posVal = document.getElementById('pos-karyawan-filter').value.toLowerCase().trim();
+    
+        const allKaryawanRows = document.querySelectorAll('#karyawan-table tbody tr');
+    
+        allKaryawanRows.forEach(row => {
+            const nama = row.cells[0].textContent.toLowerCase();
+            const pos = row.cells[2].textContent.toLowerCase().trim();  // Ini penting!
+            const shift = row.cells[3].textContent.toLowerCase();
+            const status = row.cells[4].textContent.toLowerCase();
+    
+            const isNamaMatch = nama.includes(searchVal);
+            const isStatusMatch = statusVal === 'semua' || status === statusVal;
+            const isShiftMatch = shiftVal === 'semua' || shift === shiftVal;
+            const isPosMatch = posVal === 'semua' || pos === posVal;
+    
+            if (isNamaMatch && isStatusMatch && isShiftMatch && isPosMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    
+        setupPagination('karyawan-table', 'karyawan-pagination', 5);
+    }
+
+    if (karyawanFilterForm) {
+        karyawanFilterForm.addEventListener('input', applyKaryawanFilters);
+        karyawanFilterForm.addEventListener('change', applyKaryawanFilters);
+        document.getElementById('reset-karyawan-filter').addEventListener('click', () => {
+            document.getElementById('search-karyawan').value = '';
+            document.getElementById('status-karyawan-filter').value = 'semua';
+            document.getElementById('shift-karyawan-filter').value = 'semua';
+            document.getElementById('pos-karyawan-filter').value = 'semua';
+            applyKaryawanFilters();
+        });
+    }
+
+    // ===== LOGIKA PAGINATION =====
+    function setupPagination(tableId, paginationId, rowsPerPage) {
+        const table = document.getElementById(tableId);
+        const paginationContainer = document.getElementById(paginationId);
+        if (!table || !paginationContainer) return;
+
+        const tableBody = table.querySelector('tbody');
+        const rows = Array.from(tableBody.querySelectorAll('tr:not([style*="display: none"])'));
+        const pageCount = Math.ceil(rows.length / rowsPerPage);
+        let currentPage = 1;
+
+        if (pageCount <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        function displayPage(page) {
+            currentPage = page;
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            
+            Array.from(tableBody.querySelectorAll('tr')).forEach(r => r.style.display = 'none');
+            rows.slice(start, end).forEach(r => r.style.display = '');
+
+            renderControls();
+        }
+
+        function renderControls() {
+            paginationContainer.innerHTML = '';
+            
+            const startRow = (currentPage - 1) * rowsPerPage + 1;
+            const endRow = Math.min(currentPage * rowsPerPage, rows.length);
+            const info = document.createElement('span');
+            info.className = 'text-sm text-gray-700 dark:text-gray-400';
+            info.textContent = `Menampilkan ${startRow}-${endRow} dari ${rows.length} data`;
+            
+            const controlsWrapper = document.createElement('div');
+            controlsWrapper.className = 'flex items-center gap-1';
+
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = `<i class="fas fa-chevron-left"></i>`;
+            prevButton.className = 'px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed';
+            prevButton.disabled = currentPage === 1;
+            prevButton.addEventListener('click', () => displayPage(currentPage - 1));
+            controlsWrapper.appendChild(prevButton);
+
+            for (let i = 1; i <= pageCount; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = `px-3 py-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 ${i === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'}`;
+                pageButton.addEventListener('click', () => displayPage(i));
+                controlsWrapper.appendChild(pageButton);
+            }
+            
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = `<i class="fas fa-chevron-right"></i>`;
+            nextButton.className = 'px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed';
+            nextButton.disabled = currentPage === pageCount;
+            nextButton.addEventListener('click', () => displayPage(currentPage + 1));
+            controlsWrapper.appendChild(nextButton);
+
+            paginationContainer.appendChild(info);
+            paginationContainer.appendChild(controlsWrapper);
+        }
+
+        displayPage(1);
+    }
+
+    // ===== LOGIKA GRAFIK (CHART.JS) =====
+    let barChart, donutChart;
+    const chartColors = () => {
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        return {
+            grid: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            ticks: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+        };
+    };
+    
+    function initCharts() {
+        if (document.getElementById('barChart')) {
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: [], // Awalnya kosong, akan diisi lewat API
+                    datasets: [{
+                        label: 'Hadir',
+                        data: [],
+                        backgroundColor: '#22c55e',
+                        borderRadius: 6,
+                        barPercentage: 0.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: chartColors().grid },
+                            ticks: { color: chartColors().ticks }
+                        },
+                        x: {
+                            grid: { color: chartColors().grid },
+                            ticks: { color: chartColors().ticks }
+                        }
+                    }
+                }
+            });
+        }
+    
+        if (document.getElementById('donutChart')) {
+            const ctxDonut = document.getElementById('donutChart').getContext('2d');
+            donutChart = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Hadir', 'Izin', 'Alpha'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                        borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                        borderWidth: 4,
+                        cutout: '80%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+        }
+    }
+    
+    function updateChartsTheme() {
+        if (barChart) {
+            barChart.options.scales.x.grid.color = chartColors().grid;
+            barChart.options.scales.y.grid.color = chartColors().grid;
+            barChart.options.scales.x.ticks.color = chartColors().ticks;
+            barChart.options.scales.y.ticks.color = chartColors().ticks;
+            barChart.update();
+        }
+        if (donutChart) {
+            donutChart.data.datasets[0].borderColor = document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff';
+            donutChart.update();
+        }
+    }
+    
+    async function fetchDashboardStats(data = null) {
+        try {
+            let result = data;
+            if (!result) {
+                const res = await fetch('/api/dashboard/rekap-hari-ini');
+                result = await res.json();
+            }
+    
+            // Update UI
+            document.querySelector('.card-total-hadir').textContent = result.hadir;
+            document.querySelector('.card-total-pulang').textContent = result.pulang;
+            document.querySelector('.card-total-izin').textContent = result.izin;
+            document.querySelector('.card-total-semua').textContent = result.total;
+    
+            const persentase = ((result.hadir / result.total) * 100).toFixed(0);
+            document.querySelector('.chart-center-text p.text-3xl').textContent = `${persentase}%`;
+    
+            if (donutChart) {
+                donutChart.data.datasets[0].data = [result.hadir, result.izin, result.alpha];
+                donutChart.update();
+            }
+    
+            document.querySelector('.jumlah-hadir').textContent = `${result.hadir} orang`;
+            document.querySelector('.jumlah-izin').textContent = `${result.izin} orang`;
+            document.querySelector('.jumlah-alpha').textContent = `${result.alpha} orang`;
+    
+        } catch (err) {
+            console.error('❌ Error fetch dashboard:', err);
+        }
+      const socket = io();
+      
+      socket.on('connect', () => {
+          console.log('✅ Socket.IO terhubung ke server.');
+      });
+      
+      socket.on('update_rekap', (data) => {
+          console.log("📦 Data rekap baru diterima:", data);
+          fetchDashboardStats(data); // langsung update tanpa refresh
+      });
+    }
+    
+    
+    async function loadBarChartData() {
+        try {
+            const res = await fetch('/api/dashboard/grafik-kehadiran');
+            const json = await res.json();
+    
+            if (barChart) {
+                barChart.data.labels = json.labels;
+                barChart.data.datasets[0].data = json.data;
+                barChart.update();
+            }
+        } catch (error) {
+            console.error('❌ Gagal memuat data grafik kehadiran:', error);
+        }
+      const socket = io();
+      
+      socket.on('connect', () => {
+          console.log('✅ Socket.IO terhubung ke server.');
+      });
+      
+      socket.on('update_grafik', ({ labels, data }) => {
+          console.log("📊 Grafik realtime diterima:", labels, data);
+          if (barChart) {
+              barChart.data.labels = labels;
+              barChart.data.datasets[0].data = data;
+              barChart.update();
+          }
+      });
+    }
+    
+    // ===== MANAJEMEN ADMIN =====
+    
+    const adminPage = document.getElementById('admin-page');
+    const openAdminModalBtn = adminPage.querySelector('.bg-blue-600'); // Tombol Tambah Admin
+    const addAdminModal = document.getElementById('add-admin-modal');
+    const cancelAddAdminBtn = document.getElementById('cancel-add-admin-btn');
+    const addAdminForm = document.getElementById('add-admin-form');
+    const searchAdminInput = adminPage.querySelector('input[type="text"]');
+    const adminTableBody = document.getElementById('admin-table').querySelector('tbody');
+
+    const editAdminModal = document.getElementById('edit-admin-modal');
+    const editAdminForm = document.getElementById('edit-admin-form');
+    const cancelEditAdminBtn = document.getElementById('cancel-edit-admin-btn');
+    
+    const ADMIN_API_URL = '/api/admin';
+
+    // Fungsi untuk membuka/menutup modal
+    const openAddAdminModal = () => addAdminModal.classList.remove('hidden');
+    const closeAddAdminModal = () => {
+        addAdminModal.classList.add('hidden');
+        addAdminForm.reset();
+    };
+    
+    const openEditAdminModal = () => editAdminModal.classList.remove('hidden');
+    const closeEditAdminModal = () => {
+        editAdminModal.classList.add('hidden');
+        editAdminForm.reset();
+    };
+    
+    cancelEditAdminBtn.addEventListener('click', closeEditAdminModal);
+    editAdminModal.addEventListener('click', (e) => {
+        if (e.target === editAdminModal) closeEditAdminModal();
+    });
+
+    // Event Listener untuk modal
+    openAdminModalBtn.addEventListener('click', openAddAdminModal);
+    cancelAddAdminBtn.addEventListener('click', closeAddAdminModal);
+    addAdminModal.addEventListener('click', (e) => {
+        if (e.target === addAdminModal) closeAddAdminModal();
+    });
+
+    // Fungsi untuk mengambil dan menampilkan data admin
+    const fetchAndRenderAdmins = async () => {
+        try {
+            const response = await fetch(ADMIN_API_URL);
+            const admins = await response.json();
+            
+            adminTableBody.innerHTML = '';
+            admins.forEach(admin => {
+                const row = `
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${admin.nama}</td>
+                        <td class="px-6 py-4">${admin.username}</td>
+                        <td class="px-6 py-4">••••••••</td>
+                        <td class="px-6 py-4 flex justify-center gap-3">
+                            <a href="#" class="text-blue-600 dark:text-blue-500 edit-btn" data-id="${admin._id}"><i class="fas fa-edit"></i></a>
+                            <a href="#" class="text-red-600 dark:text-red-500 delete-btn" data-id="${admin._id}"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                `;
+                adminTableBody.innerHTML += row;
+            });
+        } catch (error) {
+            console.error('Gagal mengambil data admin:', error);
+        }
+    };
+    
+    adminTableBody.addEventListener('click', async (e) => {
+        const editButton = e.target.closest('.edit-btn');
+        const deleteButton = e.target.closest('.delete-btn');
+
+        // Logika untuk Tombol Edit
+        if (editButton) {
+            e.preventDefault();
+            const adminId = editButton.dataset.id;
+            
+            try {
+                const response = await fetch(`${ADMIN_API_URL}/${adminId}`);
+                if (!response.ok) throw new Error('Gagal mengambil data admin.');
+                const admin = await response.json();
+                
+                // Isi form edit
+                document.getElementById('edit-admin-id').value = admin._id;
+                document.getElementById('edit-nama-admin-input').value = admin.nama;
+                document.getElementById('edit-username-admin-input').value = admin.username;
+                
+                openEditAdminModal();
+            } catch (error) {
+                Toast.fire({ icon: 'error', title: 'Oops...', text: error.message });
+            }
+        }
+        if (deleteButton) {
+          e.preventDefault();
+          const adminId = deleteButton.dataset.id;
+  
+          // Tampilkan konfirmasi dengan SweetAlert2
+          Swal.fire({
+              title: 'Apakah Anda yakin?',
+              text: "Data yang dihapus tidak dapat dikembalikan!",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Ya, hapus!',
+              cancelButtonText: 'Batal',
+          
+              // === INI BAGIAN YANG DIPERBARUI ===
+              // Kita berikan class Tailwind langsung ke tombolnya
+              customClass: {
+                confirmButton: 'bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mx-2',
+                cancelButton: 'bg-red-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mx-2'
+              },
+              buttonsStyling: false
+          }).then(async (result) => {
+              if (result.isConfirmed) {
+                  // Jika pengguna konfirmasi, kirim request DELETE
+                  try {
+                      const response = await fetch(`${ADMIN_API_URL}/${adminId}`, {
+                          method: 'DELETE'
+                      });
+  
+                      if (!response.ok) {
+                          throw new Error('Gagal menghapus data.');
+                      }
+  
+                      // Tampilkan notifikasi sukses
+                      Toast.fire(
+                          'Dihapus!',
+                          'Data admin telah berhasil dihapus.',
+                          'success'
+                      );
+  
+                      // Refresh tabel untuk menampilkan perubahan
+                      fetchAndRenderAdmins();
+  
+                  } catch (error) {
+                      Toast.fire({
+                          icon: 'error',
+                          title: 'Oops...',
+                          text: error.message
+                      });
+                  }
+              }
+          });
+        }
+    });
+
+    // Logika untuk Simpan Admin Baru
+    addAdminForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nama = document.getElementById('nama-admin-input').value;
+        const username = document.getElementById('username-admin-input').value;
+        const password = document.getElementById('password-admin-input').value;
+
+        try {
+            const response = await fetch(ADMIN_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nama, username, password })
+            });
+            
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Gagal menambahkan admin');
+            }
+
+            Toast.fire({ icon: 'success', title: 'Berhasil!', text: 'Admin baru berhasil ditambahkan.' });
+            closeAddAdminModal();
+            fetchAndRenderAdmins(); // Refresh tabel
+
+        } catch (error) {
+            Toast.fire({ icon: 'error', title: 'Oops...', text: error.message });
+        }
+    });
+    
+    editAdminForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = document.getElementById('edit-admin-id').value;
+        const nama = document.getElementById('edit-nama-admin-input').value;
+        const username = document.getElementById('edit-username-admin-input').value;
+        const password = document.getElementById('edit-password-admin-input').value;
+        
+        let dataToUpdate = { nama, username };
+        // Hanya tambahkan password jika diisi
+        if (password) {
+            dataToUpdate.password = password;
+        }
+
+        try {
+            const response = await fetch(`${ADMIN_API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToUpdate)
+            });
+
+            if (!response.ok) throw new Error('Gagal memperbarui data.');
+
+            Toast.fire({ icon: 'success', title: 'Berhasil!', text: 'Data admin telah diperbarui.' });
+            closeEditAdminModal();
+            fetchAndRenderAdmins();
+
+        } catch (error) {
+            Toast.fire({ icon: 'error', title: 'Oops...', text: error.message });
+        }
+    });
+
+    // Logika untuk Filter Pencarian
+    searchAdminInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = adminTableBody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            const nama = row.cells[0].textContent.toLowerCase();
+            const username = row.cells[1].textContent.toLowerCase();
+
+            if (nama.includes(searchTerm) || username.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Letakkan fungsi ini di bagian atas skrip Manajemen Pos Jaga Anda
+
+    /**
+     * Mengubah URL Google Maps menjadi format kustom.
+     * @param {string} url - URL yang dimasukkan oleh pengguna.
+     * @returns {string} URL yang sudah diubah atau URL asli jika tidak cocok.
+     */
+    function transformGoogleMapsURL(url) {
+        // Pola Regular Expression untuk menemukan lat,long dari URL Google Maps
+        // Contoh: @-7.2574719,112.7520883
+        const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const match = url.match(regex);
+    
+        // Jika pola ditemukan
+        if (match && match[1] && match[2]) {
+            const lat = match[1];
+            const long = match[2];
+            
+            // Buat URL baru sesuai format yang Anda inginkan
+            const newUrl = `https://maps.google.com/?q=${lat},${long}`;
+            console.log('URL diubah:', newUrl); // Untuk debugging
+            return newUrl;
+        }
+    
+        // Jika tidak cocok, kembalikan URL asli
+        return url;
+    }
+
+        // ===== MANAJEMEN POS JAGA =====
+    
+    const POS_JAGA_API_URL = '/api/posjaga';
+    
+    // Elemen Halaman
+    const posJagaTableBody = document.getElementById('pos-jaga-table').querySelector('tbody');
+    const searchPosInput = document.getElementById('search-pos-input');
+    const openAddPosModalBtn = document.getElementById('open-add-pos-modal-btn');
+    
+    // Elemen Kartu Statistik
+    const totalPosCard = document.getElementById('total-pos-card');
+    const posAktifCard = document.getElementById('pos-aktif-card');
+    const posTidakAktifCard = document.getElementById('pos-tidak-aktif-card');
+    
+    // Elemen Modal Tambah
+    const addPosModal = document.getElementById('add-pos-modal');
+    const addPosForm = document.getElementById('add-pos-form');
+    const cancelAddPosBtn = document.getElementById('cancel-add-pos-btn');
+    
+    // Elemen Modal Edit
+    const editPosModal = document.getElementById('edit-pos-modal');
+    const editPosForm = document.getElementById('edit-pos-form');
+    const cancelEditPosBtn = document.getElementById('cancel-edit-pos-btn');
+    
+    // Fungsi untuk update kartu statistik
+    const updatePosCards = (posts) => {
+        const total = posts.length;
+        const aktif = posts.filter(p => p.statusPos === 'aktif').length;
+        const tidakAktif = total - aktif;
+    
+        totalPosCard.textContent = total;
+        posAktifCard.textContent = aktif;
+        posTidakAktifCard.textContent = tidakAktif;
+    };
+    
+    // Fungsi untuk render tabel
+    const renderPosJagaTable = (posts) => {
+        posJagaTableBody.innerHTML = '';
+        posts.forEach(pos => {
+            const statusClass = pos.statusPos === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+            const row = `
+                <tr data-id="${pos._id}" data-nama="${pos.namaPos}" data-lokasi="${pos.lokasiPos}" data-status="${pos.statusPos}">
+                    <td class="px-6 py-4">${pos.namaPos}</td>
+                    <td class="px-6 py-4">${pos.lokasiPos}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${pos.statusPos}</span></td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-blue-600 edit-pos-btn"><i class="fas fa-edit"></i></button>
+                        <button class="text-red-600 delete-pos-btn"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+            posJagaTableBody.innerHTML += row;
+        });
+    };
+    
+    // Fungsi utama: fetch, render, dan update
+    const fetchAndDisplayPosJaga = async () => {
+        try {
+            const response = await fetch(POS_JAGA_API_URL);
+            const posts = await response.json();
+            renderPosJagaTable(posts);
+            updatePosCards(posts);
+            // Panggil fungsi untuk update dropdown di halaman lain
+            populatePosOptions(posts); 
+        } catch (error) {
+            console.error('Gagal mengambil data Pos Jaga:', error);
+        }
+    };
+    
+    // Logika Modal
+    const openAddPosModal = () => addPosModal.classList.remove('hidden');
+    const closeAddPosModal = () => {
+        addPosModal.classList.add('hidden');
+        addPosForm.reset(); 
+    };
+
+    const openEditPosModal = () => editPosModal.classList.remove('hidden');
+    const closeEditPosModal = () => editPosModal.classList.add('hidden');
+    
+    openAddPosModalBtn.addEventListener('click', openAddPosModal);
+    cancelAddPosBtn.addEventListener('click', closeAddPosModal);
+    cancelEditPosBtn.addEventListener('click', closeEditPosModal);
+    
+    // Logika Simpan Pos Baru
+    addPosForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const namaPos = document.getElementById('nama-pos-input').value;
+        const lokasiPosInput = document.getElementById('lokasi-pos-input').value;
+        const statusPos = document.getElementById('status-pos-input').value;
+        
+        // === PANGGIL FUNGSI TRANSFORMASI DI SINI ===
+        const lokasiPos = transformGoogleMapsURL(lokasiPosInput);
+    
+        const data = { namaPos, lokasiPos, statusPos };
+    
+        try {
+            const response = await fetch(POS_JAGA_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error('Gagal menyimpan data');
+            
+            closeAddPosModal();
+            fetchAndDisplayPosJaga();
+            Toast.fire({ icon: 'success', title: 'Pos jaga berhasil ditambahkan' });
+    
+        } catch (error) {
+            console.error('Gagal menyimpan Pos Jaga:', error);
+            Toast.fire({ icon: 'error', title: 'Gagal menyimpan data' });
+        }
+    });
+
+    
+    // Logika Edit & Hapus (Event Delegation)
+    posJagaTableBody.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-pos-btn');
+        const deleteBtn = e.target.closest('.delete-pos-btn');
+        const row = e.target.closest('tr');
+        const id = row.dataset.id;
+    
+        if (editBtn) {
+            // Isi form edit
+            document.getElementById('edit-pos-id').value = id;
+            document.getElementById('edit-nama-pos-input').value = row.dataset.nama;
+            document.getElementById('edit-lokasi-pos-input').value = row.dataset.lokasi;
+            document.getElementById('edit-status-pos-input').value = row.dataset.status;
+            openEditPosModal();
+        }
+    
+        if (deleteBtn) {
+            Swal.fire({
+              title: 'Apakah Anda yakin?',
+              text: "Data yang dihapus tidak dapat dikembalikan!",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Ya, hapus!',
+              cancelButtonText: 'Batal',
+          
+              // === INI BAGIAN YANG DIPERBARUI ===
+              // Kita berikan class Tailwind langsung ke tombolnya
+              customClass: {
+                confirmButton: 'bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mx-2',
+                cancelButton: 'bg-red-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mx-2'
+              },
+              buttonsStyling: false
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await fetch(`${POS_JAGA_API_URL}/${id}`, { method: 'DELETE' });
+                    fetchAndDisplayPosJaga();
+                    Toast.fire({icon: 'success', title: 'Berhasil', text: 'Data pos berhasil dihapus'})
+                }
+            });
+        }
+    });
+    
+    // Logika Update Pos
+    editPosForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-pos-id').value;
+        
+        const namaPos = document.getElementById('edit-nama-pos-input').value;
+        const lokasiPosInput = document.getElementById('edit-lokasi-pos-input').value;
+        const statusPos = document.getElementById('edit-status-pos-input').value;
+    
+        // === PANGGIL FUNGSI TRANSFORMASI DI SINI JUGA ===
+        const lokasiPos = transformGoogleMapsURL(lokasiPosInput);
+        
+        const data = { namaPos, lokasiPos, statusPos };
+    
+        try {
+            const response = await fetch(`${POS_JAGA_API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error('Gagal memperbarui data');
+    
+            closeEditPosModal();
+            fetchAndDisplayPosJaga();
+            Toast.fire({ icon: 'success', title: 'Pos jaga berhasil diperbarui' });
+            
+        } catch (error) {
+            console.error('Gagal mengupdate Pos Jaga:', error);
+            Toast.fire({ icon: 'error', title: 'Gagal memperbarui data' });
+        }
+    });
+
+    
+    // Logika Filter Pencarian
+    searchPosInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = posJagaTableBody.querySelectorAll('tr');
+        rows.forEach(row => {
+            const nama = row.cells[0].textContent.toLowerCase();
+            const lokasi = row.cells[1].textContent.toLowerCase();
+            row.style.display = (nama.includes(searchTerm) || lokasi.includes(searchTerm)) ? '' : 'none';
+        });
+    });
+    // Fungsi untuk mengisi dropdown Pos di halaman lain
+    const populatePosOptions = (posts) => {
+        // Cari semua elemen select untuk Pos Jaga
+        const posSelects = document.querySelectorAll('#pos-karyawan-input, #edit-pos-karyawan, #pos-karyawan-filter');
+        
+        posSelects.forEach(select => {
+            // Simpan opsi pertama (jika ada, seperti "Semua Pos")
+            const firstOption = select.querySelector('option');
+            select.innerHTML = ''; // Kosongkan opsi
+            if (firstOption) {
+                select.appendChild(firstOption); // Kembalikan opsi pertama
+            }
+    
+            // Tambahkan opsi dari data Pos Jaga yang aktif
+            posts.forEach(pos => {
+                if (pos.statusPos === 'aktif') {
+                    const option = document.createElement('option');
+                    option.value = pos.namaPos;
+                    option.textContent = pos.namaPos;
+                    select.appendChild(option);
+                }
+            });
+        });
+    };
+    
+    // ===== MANAJEMEN PENGATURAN =====
+
+    const CONFIG_API_URL = '/api/config';
+    
+    // Elemen Tombol Simpan
+    const simpanPengaturanBtn = document.querySelector('#pengaturan-page button.bg-blue-600');
+    
+    // Elemen Form Shift Pagi
+    const togglePagi = document.getElementById('toggle-pagi');
+    const masukPagi = document.getElementById('masuk-pagi');
+    const keluarPagi = document.getElementById('keluar-pagi');
+    
+    // Elemen Form Shift Siang
+    const toggleSiang = document.getElementById('toggle-siang');
+    const masukSiang = document.getElementById('masuk-siang');
+    const keluarSiang = document.getElementById('keluar-siang');
+    
+    // Elemen Form Shift Malam
+    const toggleMalam = document.getElementById('toggle-malam');
+    const masukMalam = document.getElementById('masuk-malam');
+    const keluarMalam = document.getElementById('keluar-malam');
+    
+    // Elemen Pengaturan Lainnya
+    const toleransiInput = document.getElementById('toleransi');
+    const radiusInput = document.getElementById('radius');
+    
+    // Fungsi untuk memuat pengaturan ke form
+    const loadConfigToForm = async () => {
+        try {
+            const response = await fetch(CONFIG_API_URL);
+            const config = await response.json();
+    
+            if (config) {
+                // Isi form Shift Pagi
+                togglePagi.checked = config.shiftPagi.aktif;
+                masukPagi.value = config.shiftPagi.jamMasuk;
+                keluarPagi.value = config.shiftPagi.jamKeluar;
+    
+                // Isi form Shift Siang
+                toggleSiang.checked = config.shiftSiang.aktif;
+                masukSiang.value = config.shiftSiang.jamMasuk;
+                keluarSiang.value = config.shiftSiang.jamKeluar;
+    
+                // Isi form Shift Malam
+                toggleMalam.checked = config.shiftMalam.aktif;
+                masukMalam.value = config.shiftMalam.jamMasuk;
+                keluarMalam.value = config.shiftMalam.jamKeluar;
+    
+                // Isi form pengaturan lainnya
+                toleransiInput.value = config.toleransiKeterlambatan;
+                radiusInput.value = config.radiusAbsensi;
+            }
+        } catch (error) {
+            console.error('Gagal memuat konfigurasi:', error);
+        }
+    };
+    
+    // Logika Simpan Pengaturan
+    simpanPengaturanBtn.addEventListener('click', async () => {
+        // Kumpulkan semua data dari form
+        const configData = {
+            shiftPagi: {
+                aktif: togglePagi.checked,
+                jamMasuk: masukPagi.value,
+                jamKeluar: keluarPagi.value,
+            },
+            shiftSiang: {
+                aktif: toggleSiang.checked,
+                jamMasuk: masukSiang.value,
+                jamKeluar: keluarSiang.value,
+            },
+            shiftMalam: {
+                aktif: toggleMalam.checked,
+                jamMasuk: masukMalam.value,
+                jamKeluar: keluarMalam.value,
+            },
+            toleransiKeterlambatan: parseInt(toleransiInput.value, 10),
+            radiusAbsensi: parseInt(radiusInput.value, 10),
+        };
+    
+        try {
+            const response = await fetch(CONFIG_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(configData)
+            });
+    
+            if (!response.ok) throw new Error('Gagal menyimpan pengaturan');
+            
+            Toast.fire({ icon: 'success', title: 'Pengaturan berhasil disimpan' });
+    
+        } catch (error) {
+            Toast.fire({ icon: 'error', title: 'Oops...', text: error.message });
+        }
+    });
+    
+    // ===== MANAJEMEN ABSENSI (VERSI PERBAIKAN UNTUK FILTER EXPORT) =====
+    // ===== MANAJEMEN ABSENSI (KODE FINAL YANG SUDAH DIPERBAIKI) =====
+    // ===== MANAJEMEN ABSENSI (KODE FINAL YANG SUDAH DIPERBAIKI) =====
+    const absensiPage = document.getElementById('absensi-page');
+    
+    if (absensiPage) {
+    
+        // --- URL API ---
+        const ABSENSI_API_URL = '/api/absensi';
+        const KARYAWAN_API_URL = '/api/karyawan';
+        const POS_JAGA_API_URL = '/api/posjaga';
+    
+        // --- Elemen-elemen dengan ID yang Jelas ---
+        const searchInput = document.getElementById('search-absensi-input');
+        const shiftFilter = document.getElementById('shift-absensi-filter');
+        const posFilter = document.getElementById('pos-absensi-filter');
+        const statusFilter = document.getElementById('status-absensi-filter');
+        const startDateInput = absensiPage.querySelector('input[type="date"]:nth-of-type(1)');
+        const endDateInput = absensiPage.querySelector('input[type="date"]:nth-of-type(2)');
+        const exportBtn = absensiPage.querySelector('button.bg-green-600');
+        const tableBody = document.getElementById('absensi-table').querySelector('tbody');
+        const cardHadir = absensiPage.querySelector('.fa-user-check').previousElementSibling.querySelector('p:first-child');
+        const cardIzin = absensiPage.querySelector('.fa-calendar-day').previousElementSibling.querySelector('p:first-child');
+        const cardAlpha = absensiPage.querySelector('.fa-user-times').previousElementSibling.querySelector('p:first-child');
+        const cardPulang = absensiPage.querySelector('.fa-clock').previousElementSibling.querySelector('p:first-child');
+    
+        let allAbsensiData = []; // Variabel untuk menyimpan semua data dari server
+    
+        // --- Fungsi untuk mengisi pilihan filter dinamis ---
+        const populateFilterOptions = async () => {
+            try {
+                const shiftResponse = await fetch(KARYAWAN_API_URL);
+                const karyawanData = await shiftResponse.json();
+                const shifts = [...new Set(karyawanData.map(k => k.shift))].filter(Boolean);
+                shiftFilter.innerHTML = '<option value="">Semua Shift</option>';
+                shifts.forEach(s => {
+                    if (s) {
+                        const optionText = s.charAt(0).toUpperCase() + s.slice(1);
+                        shiftFilter.innerHTML += `<option value="${s}">${optionText}</option>`;
+                    }
+                });
+                const posResponse = await fetch(POS_JAGA_API_URL);
+                const posData = await posResponse.json();
+                posFilter.innerHTML = '<option value="">Semua Pos</option>';
+                posData.forEach(p => {
+                    posFilter.innerHTML += `<option value="${p.namaPos}">${p.namaPos}</option>`;
+                });
+            } catch (error) {
+                console.error("Gagal memuat opsi filter:", error);
+            }
+        };
+    
+        // --- Fungsi untuk render tabel ---
+        const renderTable = (data) => {
+            tableBody.innerHTML = '';
+            if (data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="10" class="text-center p-4">Tidak ada data untuk ditampilkan.</td></tr>';
+                return;
+            }
+            data.forEach(item => {
+                const statusClass = {
+                    hadir: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                    izin: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                    alpha: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+                    pulang: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                }[item.status] || 'bg-gray-100 text-gray-800';
+                const row = `
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${item.karyawan ? item.karyawan.nama : 'N/A'}</td>
+                        <td class="px-6 py-4">${item.nomorHp}</td>
+                        <td class="px-6 py-4">${new Date(item.tanggal).toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
+                        <td class="px-6 py-4">${item.jam}</td>
+                        <td class="px-6 py-4">${item.posJaga}</td>
+                        <td class="px-6 py-4">${item.shift}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${item.status}</span></td>
+                        <td class="px-6 py-4">${item.keterangan || '-'}</td>
+                        <td class="px-6 py-4">
+                            ${item.lokasi || '-'}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button class="text-red-600 delete-absensi-btn" data-id="${item._id}"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        };
+    
+        // --- Fungsi untuk update kartu statistik ---
+        const updateCards = (data) => {
+            cardHadir.textContent = data.filter(d => d.status === 'hadir').length;
+            cardIzin.textContent = data.filter(d => d.status === 'izin').length;
+            cardAlpha.textContent = data.filter(d => d.status === 'alpha').length;
+            cardPulang.textContent = data.filter(d => d.status === 'pulang').length;
+        };
+        
+        // --- Fungsi untuk filter data di sisi klien ---
+        const applyFilters = () => {
+            const search = searchInput.value.toLowerCase();
+            const shift = shiftFilter.value.toLowerCase();
+            const pos = posFilter.value.toLowerCase();
+            const status = statusFilter.value.toLowerCase();
+            const filteredData = allAbsensiData.filter(item => {
+                // Pastikan item.karyawan dan item.karyawan.nama ada sebelum mengaksesnya
+                const nama = (item.karyawan && item.karyawan.nama) ? item.karyawan.nama.toLowerCase() : '';
+                const nomor = item.nomorHp;
+                const searchMatch = nama.includes(search) || (nomor && nomor.includes(search)); // Periksa nomor juga
+                const shiftMatch = !shift || (item.shift && item.shift.toLowerCase() === shift);
+                const posMatch = !pos || (item.posJaga && item.posJaga.toLowerCase() === pos);
+                const statusMatch = !status || (item.status && item.status.toLowerCase() === status);
+                return searchMatch && shiftMatch && posMatch && statusMatch;
+            });
+            renderTable(filteredData);
+            updateCards(filteredData);
+        };
+    
+        // --- Fungsi utama untuk fetch SEMUA data ---
+        const fetchData = async () => {
+            tableBody.innerHTML = '<tr><td colspan="10" class="text-center p-4">Memuat data...</td></tr>';
+            try {
+                const response = await fetch(ABSENSI_API_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                allAbsensiData = await response.json();
+                // Setelah fetch, pastikan data diurutkan dari yang terbaru (sesuai cara server mengurutkan)
+                allAbsensiData.sort((a, b) => {
+                    const dateA = new Date(a.tanggal);
+                    const dateB = new Date(b.tanggal);
+                    if (dateB.getTime() !== dateA.getTime()) {
+                        return dateB.getTime() - dateA.getTime();
+                    }
+                    // Jika tanggal sama, urutkan berdasarkan jam
+                    const [hourA, minuteA] = a.jam.split(':').map(Number);
+                    const [hourB, minuteB] = b.jam.split(':').map(Number);
+                    const timeA = hourA * 60 + minuteA;
+                    const timeB = hourB * 60 + minuteB;
+                    return timeB - timeA;
+                });
+                applyFilters();
+            } catch (error) {
+                console.error('Gagal mengambil data:', error);
+                tableBody.innerHTML = `<tr><td colspan="10" class="text-center p-4 text-red-500">Gagal memuat data. Periksa console.</td></tr>`;
+            }
+        };
+    
+        // --- Event Listeners ---
+        [searchInput, shiftFilter, posFilter, statusFilter].forEach(el => {
+            el.addEventListener('input', applyFilters);
+        });
+    
+        tableBody.addEventListener('click', async (e) => {
+            if (e.target.closest('.delete-absensi-btn')) {
+                const id = e.target.closest('.delete-absensi-btn').dataset.id;
+                Swal.fire({
+                    title: 'Apakah Anda yakin?',
+                    text: "Data yang dihapus tidak dapat dikembalikan!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, hapus!',
+                    cancelButtonText: 'Batal',
+                    customClass: {
+                        confirmButton: 'bg-blue-600 text-white font-bold py-2 px-4 rounded-lg mx-2',
+                        cancelButton: 'bg-red-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mx-2'
+                    },
+                    buttonsStyling: false
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        await fetch(`${ABSENSI_API_URL}/${id}`, { method: 'DELETE' });
+                        
+                        Toast.fire(
+                            'Dihapus!',
+                            'Data absensi telah dihapus dari database.',
+                            'success'
+                        );
+                        // Socket.IO listener akan mengurus pembaruan UI
+                    }
+                });
+            }
+        });
+    
+        exportBtn.addEventListener('click', () => {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            let exportUrl = `${ABSENSI_API_URL}/export`;
+            if (startDate && endDate) {
+                exportUrl += `?startDate=${startDate}&endDate=${endDate}`;
+            }
+            window.location.href = exportUrl;
+        });
+    
+        // --- Inisialisasi Halaman ---
+        const initializeAbsensiPage = () => {
+            const today = new Date().toISOString().split('T')[0];
+            startDateInput.value = today;
+            endDateInput.value = today;
+            populateFilterOptions();
+            fetchData(); // Muat data awal saat halaman pertama kali dimuat
+        };
+    
+        initializeAbsensiPage();
+        
+        // === KONEKSI SOCKET.IO UNTUK REALTIME ===
+        // Pastikan URL di sini sesuai dengan port server Anda, jika berbeda dari port halaman
+        const socket = io(); // Gunakan port saat ini atau tentukan secara eksplisit jika berbeda
+    
+        socket.on('connect', () => {
+            console.log('✅ Klien Socket.IO terhubung ke server.');
+        });
+    
+        socket.on('disconnect', () => {
+            console.warn('❌ Klien Socket.IO terputus dari server.');
+        });
+    
+        socket.on('absensi_baru', (data) => {
+            console.log('📩 Klien: Menerima absensi baru dari server:', JSON.stringify(data, null, 2));
+    
+            // Karena server sudah melakukan populate karyawan dan mengirim objek lengkap,
+            // kita bisa langsung menambahkan 'data' ke 'allAbsensiData'.
+            // Pastikan juga untuk mempertahankan urutan data terbaru di atas
+            allAbsensiData.unshift(data); 
+    
+            // Untuk memastikan urutan tetap konsisten (terbaru di atas)
+            allAbsensiData.sort((a, b) => {
+                const dateA = new Date(a.tanggal);
+                const dateB = new Date(b.tanggal);
+                if (dateB.getTime() !== dateA.getTime()) {
+                    return dateB.getTime() - dateA.getTime();
+                }
+                const [hourA, minuteA] = a.jam.split(':').map(Number);
+                const [hourB, minuteB] = b.jam.split(':').map(Number);
+                const timeA = hourA * 60 + minuteA;
+                const timeB = hourB * 60 + minuteB;
+                return timeB - timeA;
+            });
+    
+            console.log('📩 Klien: Data allAbsensiData diperbarui dan applyFilters() dipanggil.');
+            applyFilters(); // Re-render dengan data terbaru
+        });
+        
+        socket.on('absensi_dihapus', ({ id }) => {
+            console.log(`📩 Klien: Menerima perintah hapus untuk ID: ${id}`);
+            
+            const initialCount = allAbsensiData.length;
+            allAbsensiData = allAbsensiData.filter(item => item._id !== id);
+            const newCount = allAbsensiData.length;
+    
+            if (newCount < initialCount) {
+                console.log(`📩 Klien: ID ${id} berhasil dihapus dari allAbsensiData. Jumlah data baru: ${newCount}`);
+            } else {
+                console.warn(`📩 Klien WARNING: ID ${id} tidak ditemukan di allAbsensiData untuk dihapus.`);
+            }
+    
+            console.log('📩 Klien: Memanggil applyFilters() untuk update UI setelah penghapusan.');
+            applyFilters(); 
+        });
+    }
+
+    // Panggil fungsi load saat halaman dimuat atau diakses
+    // Anda bisa memanggil ini saat link navigasi Pengaturan diklik
+    loadConfigToForm();
+
+
+    
+    // Panggil fungsi saat halaman dimuat
+    fetchAndDisplayPosJaga();
+
+
+    // ===== INISIALISASI HALAMAN =====
+    
+    // Panggil fungsi untuk memuat data karyawan dari server saat halaman dimuat
+    fetchAndRenderKaryawan(); 
+    fetchAndRenderAdmins(); 
+    // Inisialisasi fungsi lainnya
+    initCharts();
+    fetchDashboardStats();
+    loadBarChartData();
+    setupPagination('admin-table', 'admin-pagination', 5);
+    setupPagination('pos-jaga-table', 'pos-jaga-pagination', 5);
+    setupPagination('absensi-table', 'absensi-pagination', 5);
+});
