@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${karyawan.nama}</td>
                         <td class="px-6 py-4">${karyawan.nomorWa}</td>
                         <td class="px-6 py-4">${karyawan.pos}</td>
+                        <td class="px-6 py-4">${karyawan.shift}</td>
                         <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${karyawan.status}</span></td>
                         <td class="px-6 py-4 flex gap-3">
                             <a href="#" class="text-blue-600 dark:text-blue-500 edit-btn" data-id="${karyawan._id}"><i class="fas fa-edit"></i></a>
@@ -157,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('edit-nama-karyawan').value = karyawan.nama;
                     document.getElementById('edit-nomor-wa').value = karyawan.nomorWa;
                     document.getElementById('edit-pos-karyawan').value = karyawan.pos;
-                    
+                    document.getElementById('edit-shift-karyawan').value = karyawan.shift;
                     document.getElementById('edit-status-karyawan').value = karyawan.status;
 
                     // 3. Tampilkan modal
@@ -233,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 nama: document.getElementById('edit-nama-karyawan').value,
                 nomorWa: document.getElementById('edit-nomor-wa').value,
                 pos: document.getElementById('edit-pos-karyawan').value,
-                
+                shift: document.getElementById('edit-shift-karyawan').value,
                 status: document.getElementById('edit-status-karyawan').value,
             };
 
@@ -261,15 +262,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const nama = document.getElementById('nama-karyawan-input').value.trim();
             const nomorWa = document.getElementById('nomor-wa-input').value.trim();
             const pos = document.getElementById('pos-karyawan-input').value;
-            
+            const shift = document.getElementById('shift-karyawan-input').value;
             const status = document.getElementById('status-karyawan-input').value;
     
-            if (!nama || !nomorWa || !pos) {
+            if (!nama || !nomorWa || !pos || !shift) {
                 Swal.fire({ icon: 'error', title: 'Oops...', text: 'Semua field harus diisi!' });
                 return;
             }
     
-            const newKaryawanData = { nama, nomorWa, pos, status };
+            const newKaryawanData = { nama, nomorWa, pos, shift, status };
     
             try {
                 const response = await fetch(API_URL, {
@@ -342,6 +343,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // ===== LOGIKA TOGGLE SHIFT =====
+    document.querySelectorAll('.shift-setting-card').forEach(card => {
+        const toggle = card.querySelector('.toggle-checkbox');
+        const inputs = card.querySelectorAll('input[type="time"]');
+        
+        function updateInputsState() {
+            inputs.forEach(input => {
+                input.disabled = !toggle.checked;
+                input.classList.toggle('bg-gray-200', !toggle.checked);
+                input.classList.toggle('dark:bg-gray-800', !toggle.checked);
+                input.classList.toggle('cursor-not-allowed', !toggle.checked);
+                input.classList.toggle('bg-gray-50', toggle.checked);
+                input.classList.toggle('dark:bg-gray-700', toggle.checked);
+            });
+        }
+
+        toggle.addEventListener('change', updateInputsState);
+        updateInputsState();
+    });
 
     // ===== LOGIKA FILTER KARYAWAN =====
     const karyawanFilterForm = document.getElementById('karyawan-filter-form');
@@ -349,6 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function applyKaryawanFilters() {
         const searchVal = document.getElementById('search-karyawan').value.toLowerCase();
         const statusVal = document.getElementById('status-karyawan-filter').value.toLowerCase();
+        const shiftVal = document.getElementById('shift-karyawan-filter').value.toLowerCase();
         const posVal = document.getElementById('pos-karyawan-filter').value.toLowerCase().trim();
     
         const allKaryawanRows = document.querySelectorAll('#karyawan-table tbody tr');
@@ -356,14 +377,15 @@ document.addEventListener('DOMContentLoaded', function () {
         allKaryawanRows.forEach(row => {
             const nama = row.cells[0].textContent.toLowerCase();
             const pos = row.cells[2].textContent.toLowerCase().trim();  // Ini penting!
-            
-            const status = row.cells[3].textContent.toLowerCase();
+            const shift = row.cells[3].textContent.toLowerCase();
+            const status = row.cells[4].textContent.toLowerCase();
     
             const isNamaMatch = nama.includes(searchVal);
             const isStatusMatch = statusVal === 'semua' || status === statusVal;
+            const isShiftMatch = shiftVal === 'semua' || shift === shiftVal;
             const isPosMatch = posVal === 'semua' || pos === posVal;
     
-            if (isNamaMatch && isStatusMatch && isPosMatch) {
+            if (isNamaMatch && isStatusMatch && isShiftMatch && isPosMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -379,6 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('reset-karyawan-filter').addEventListener('click', () => {
             document.getElementById('search-karyawan').value = '';
             document.getElementById('status-karyawan-filter').value = 'semua';
+            document.getElementById('shift-karyawan-filter').value = 'semua';
             document.getElementById('pos-karyawan-filter').value = 'semua';
             applyKaryawanFilters();
         });
@@ -1185,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
         // --- Elemen-elemen dengan ID yang Jelas ---
         const searchInput = document.getElementById('search-absensi-input');
-        
+        const shiftFilter = document.getElementById('shift-absensi-filter');
         const posFilter = document.getElementById('pos-absensi-filter');
         const statusFilter = document.getElementById('status-absensi-filter');
         const startDateInput = absensiPage.querySelector('input[type="date"]:nth-of-type(1)');
@@ -1202,6 +1225,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // --- Fungsi untuk mengisi pilihan filter dinamis ---
         const populateFilterOptions = async () => {
             try {
+                const shiftResponse = await fetch(KARYAWAN_API_URL);
+                const karyawanData = await shiftResponse.json();
+                const shifts = [...new Set(karyawanData.map(k => k.shift))].filter(Boolean);
+                shiftFilter.innerHTML = '<option value="">Semua Shift</option>';
+                shifts.forEach(s => {
+                    if (s) {
+                        const optionText = s.charAt(0).toUpperCase() + s.slice(1);
+                        shiftFilter.innerHTML += `<option value="${s}">${optionText}</option>`;
+                    }
+                });
                 const posResponse = await fetch(POS_JAGA_API_URL);
                 const posData = await posResponse.json();
                 posFilter.innerHTML = '<option value="">Semua Pos</option>';
@@ -1225,9 +1258,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     hadir: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
                     izin: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
                     alpha: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-                    pulang: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                    'istirahat': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-                    'selesai istirahat': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                    pulang: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
                 }[item.status] || 'bg-gray-100 text-gray-800';
                 const row = `
                     <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
@@ -1236,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td class="px-6 py-4">${new Date(item.tanggal).toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
                         <td class="px-6 py-4">${item.jam}</td>
                         <td class="px-6 py-4">${item.posJaga}</td>
-                        
+                        <td class="px-6 py-4">${item.shift}</td>
                         <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${item.status}</span></td>
                         <td class="px-6 py-4">${item.keterangan || '-'}</td>
                         <td class="px-6 py-4">
@@ -1262,6 +1293,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // --- Fungsi untuk filter data di sisi klien ---
         const applyFilters = () => {
             const search = searchInput.value.toLowerCase();
+            const shift = shiftFilter.value.toLowerCase();
             const pos = posFilter.value.toLowerCase();
             const status = statusFilter.value.toLowerCase();
             const filteredData = allAbsensiData.filter(item => {
@@ -1269,10 +1301,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const nama = (item.karyawan && item.karyawan.nama) ? item.karyawan.nama.toLowerCase() : '';
                 const nomor = item.nomorHp;
                 const searchMatch = nama.includes(search) || (nomor && nomor.includes(search)); // Periksa nomor juga
-                
+                const shiftMatch = !shift || (item.shift && item.shift.toLowerCase() === shift);
                 const posMatch = !pos || (item.posJaga && item.posJaga.toLowerCase() === pos);
                 const statusMatch = !status || (item.status && item.status.toLowerCase() === status);
-                return searchMatch && posMatch && statusMatch;
+                return searchMatch && shiftMatch && posMatch && statusMatch;
             });
             renderTable(filteredData);
             updateCards(filteredData);
@@ -1307,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     
         // --- Event Listeners ---
-        [searchInput, posFilter, statusFilter].forEach(el => {
+        [searchInput, shiftFilter, posFilter, statusFilter].forEach(el => {
             el.addEventListener('input', applyFilters);
         });
     

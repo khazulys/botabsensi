@@ -6,8 +6,8 @@ const absensiSchema = new mongoose.Schema({
     tanggal: { type: Date, required: true },
     jam: { type: String, required: true }, // Jam Masuk
     posJaga: { type: String, required: true },
-    shift: { type: String, required: true },
-    status: { type: String, enum: ['hadir', 'izin', 'alpha', 'pulang'], required: true },
+    //shift: { type: String, required: true },
+    status: { type: String, enum: ['hadir', 'izin', 'alpha', 'pulang', 'istirahat', 'selesai istirahat'], required: true },
     keterangan: { type: String },
     lokasi: { type: String },
     buktiFoto: { type: String }, // Bukti Foto Masuk

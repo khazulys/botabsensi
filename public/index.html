@@ -160,7 +160,6 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <input type="text" id="search-karyawan" placeholder="Cari nama karyawan..." class="lg:col-span-2 w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white dark:placeholder-gray-400">
                             <select id="status-karyawan-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="semua">Semua Status</option><option value="aktif">Aktif</option><option value="tidak aktif">Tidak Aktif</option></select>
-                            <select id="shift-karyawan-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="semua">Semua Shift</option><option value="pagi">Pagi</option><option value="siang">Siang</option><option value="malam">Malam</option></select>
                             <select id="pos-karyawan-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="semua">Semua Pos</option></select>
                             <button id="reset-karyawan-filter" class="w-full md:col-start-2 lg:col-start-auto p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center justify-center gap-2"><i class="fas fa-filter"></i>Reset</button>
                         </div>
@@ -168,7 +167,7 @@
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400" id="karyawan-table">
-                                <thead class="bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-400 uppercase"><tr><th class="px-6 py-3">Nama</th><th class="px-6 py-3">Nomor WA</th><th class="px-6 py-3">Pos</th><th class="px-6 py-3">Shift</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Aksi</th></tr></thead>
+                                <thead class="bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-400 uppercase"><tr><th class="px-6 py-3">Nama</th><th class="px-6 py-3">Nomor WA</th><th class="px-6 py-3">Pos</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Aksi</th></tr></thead>
                                 <tbody>
                                     
                                 </tbody>
@@ -307,58 +306,80 @@
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fas fa-search text-gray-400"></i></span>
                                 <input type="text" id="search-absensi-input" placeholder="Cari nama atau nomor HP..." class="w-full p-2 pl-10 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white dark:placeholder-gray-400">
                             </div>
-                            <select id="shift-absensi-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="">Semua Shift</option><option>Pagi</option><option>Siang</option><option>Malam</option></select>
-                            <select id="pos-absensi-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="">Semua Pos</option><option>Pos A</option><option>Pos B</option></select>
-                            <select id="status-absensi-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="">Semua Status</option><option>Hadir</option><option>Izin</option><option>Pulang</option></select>
+                            <select id="pos-absensi-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="">Semua Pos</option></select>
+                            <select id="status-absensi-filter" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><option value="">Semua Status</option><option>Hadir</option><option>Izin</option><option>Pulang</option><option>Istirahat</option><option>Selesai istirahat</option></select>
                         </div>
                     </div>
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400" id="absensi-table">
                                 <thead class="bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-400 uppercase whitespace-nowrap">
-                                    <tr><th class="px-6 py-3">Nama</th><th class="px-6 py-3">Nomor HP</th><th class="px-6 py-3">Tanggal</th><th class="px-6 py-3">Jam</th><th class="px-6 py-3">Pos Jaga</th><th class="px-6 py-3">Shift</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Keterangan</th><th class="px-6 py-3">Lokasi/Bukti</th><th class="px-6 py-3 text-center">Aksi</th></tr>
+                                    <tr><th class="px-6 py-3">Nama</th><th class="px-6 py-3">Nomor HP</th><th class="px-6 py-3">Tanggal</th><th class="px-6 py-3">Jam</th><th class="px-6 py-3">Pos Jaga</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Keterangan</th><th class="px-6 py-3">Lokasi/Bukti</th><th class="px-6 py-3 text-center">Aksi</th></tr>
                                 </thead>
                                 <tbody>
-                                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"><td class="px-6 py-4 font-medium text-gray-900 dark:text-white">Ahmad Subagyo</td><td class="px-6 py-4">081234567890</td><td class="px-6 py-4">15/1/2024</td><td class="px-6 py-4"><i class="far fa-clock mr-2 text-gray-400"></i>08:00</td><td class="px-6 py-4"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>Pos A</td><td class="px-6 py-4">Pagi</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">hadir</span></td><td class="px-6 py-4">Tepat waktu</td><td class="px-6 py-4">Pintu Masuk Utama</td><td class="px-6 py-4 text-center"><a href="#" class="text-red-600 dark:text-red-500"><i class="fas fa-trash"></i></a></td></tr>
-                                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"><td class="px-6 py-4 font-medium text-gray-900 dark:text-white">Siti Nurhaliza</td><td class="px-6 py-4">081234567891</td><td class="px-6 py-4">15/1/2024</td><td class="px-6 py-4"><i class="far fa-clock mr-2 text-gray-400"></i>20:00</td><td class="px-6 py-4"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>Pos B</td><td class="px-6 py-4">Malam</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">hadir</span></td><td class="px-6 py-4">Tepat waktu</td><td class="px-6 py-4">Pintu Samping</td><td class="px-6 py-4 text-center"><a href="#" class="text-red-600 dark:text-red-500"><i class="fas fa-trash"></i></a></td></tr>
-                                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"><td class="px-6 py-4 font-medium text-gray-900 dark:text-white">Budi Santoso</td><td class="px-6 py-4">081234567892</td><td class="px-6 py-4">15/1/2024</td><td class="px-6 py-4">-</td><td class="px-6 py-4"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>Pos C</td><td class="px-6 py-4">Siang</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">izin</span></td><td class="px-6 py-4">Sakit</td><td class="px-6 py-4">-</td><td class="px-6 py-4 text-center"><a href="#" class="text-red-600 dark:text-red-500"><i class="fas fa-trash"></i></a></td></tr>
-                                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"><td class="px-6 py-4 font-medium text-gray-900 dark:text-white">Dewi Sartika</td><td class="px-6 py-4">081234567893</td><td class="px-6 py-4">15/1/2024</td><td class="px-6 py-4"><i class="far fa-clock mr-2 text-gray-400"></i>14:00</td><td class="px-6 py-4"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>Pos A</td><td class="px-6 py-4">Siang</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">hadir</span></td><td class="px-6 py-4">Tepat waktu</td><td class="px-6 py-4">Pintu Masuk Utama</td><td class="px-6 py-4 text-center"><a href="#" class="text-red-600 dark:text-red-500"><i class="fas fa-trash"></i></a></td></tr>
-                                    <tr class="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600"><td class="px-6 py-4 font-medium text-gray-900 dark:text-white">Rudi Hermawan</td><td class="px-6 py-4">081234567894</td><td class="px-6 py-4">15/1/2024</td><td class="px-6 py-4"><i class="far fa-clock mr-2 text-gray-400"></i>17:00</td><td class="px-6 py-4"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>Pos B</td><td class="px-6 py-4">Siang</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">pulang</span></td><td class="px-6 py-4">Selesai shift</td><td class="px-6 py-4">Pintu Samping</td><td class="px-6 py-4 text-center"><a href="#" class="text-red-600 dark:text-red-500"><i class="fas fa-trash"></i></a></td></tr>
+                                    
                                 </tbody>
                             </table>
                         </div>
                         <div id="absensi-pagination" class="flex justify-between items-center p-4"></div>
                     </div>
                 </div>
-
-                <!-- Halaman Pengaturan -->
+                
+                <!-- Halaman pengaturan -->
                 <div id="pengaturan-page" class="page-content hidden">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                        <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Pengaturan Sistem</h2>
-                        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 w-full md:w-auto justify-center">
-                            <i class="fas fa-save"></i>
-                            <span>Simpan Pengaturan</span>
-                        </button>
-                    </div>
-                    <div class="space-y-8">
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-                            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center gap-3"><i class="far fa-clock text-blue-500"></i>Jadwal Shift</h3>
-                            <div class="space-y-6">
-                                <div class="shift-setting-card p-4 border dark:border-gray-700 rounded-lg"><div class="flex justify-between items-center mb-4"><label class="font-medium text-gray-700 dark:text-gray-300">Shift Pagi</label><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="toggle-pagi" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/><label for="toggle-pagi" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer"></label></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="masuk-pagi" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Masuk</label><input type="time" id="masuk-pagi" value="06:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div><div><label for="keluar-pagi" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Keluar</label><input type="time" id="keluar-pagi" value="14:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div></div></div>
-                                <div class="shift-setting-card p-4 border dark:border-gray-700 rounded-lg"><div class="flex justify-between items-center mb-4"><label class="font-medium text-gray-700 dark:text-gray-300">Shift Siang</label><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="toggle-siang" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/><label for="toggle-siang" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer"></label></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="masuk-siang" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Masuk</label><input type="time" id="masuk-siang" value="14:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div><div><label for="keluar-siang" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Keluar</label><input type="time" id="keluar-siang" value="22:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div></div></div>
-                                <div class="shift-setting-card p-4 border dark:border-gray-700 rounded-lg"><div class="flex justify-between items-center mb-4"><label class="font-medium text-gray-700 dark:text-gray-300">Shift Malam</label><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="toggle-malam" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/><label for="toggle-malam" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer"></label></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="masuk-malam" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Masuk</label><input type="time" id="masuk-malam" value="22:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div><div><label for="keluar-malam" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Keluar</label><input type="time" id="keluar-malam" value="06:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div></div></div>
-                            </div>
-                            <div class="mt-6"><label for="toleransi" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Toleransi Keterlambatan (menit)</label><input type="number" id="toleransi" value="15" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"></div>
-                        </div>
-                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-                            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center gap-3"><i class="fas fa-map-marked-alt text-green-500"></i>Pengaturan Lokasi</h3>
-                            <div><label for="radius" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Radius Absensi (meter)</label><input type="number" id="radius" value="100" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"><p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Jarak maksimum dari titik pos untuk dapat melakukan absensi.</p></div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    </div>
+                  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                      <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Pengaturan Sistem</h2>
+                      <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 w-full md:w-auto justify-center">
+                          <i class="fas fa-save"></i>
+                          <span>Simpan Pengaturan</span>
+                      </button>
+                  </div>
+                  <div class="space-y-8">
+                      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+                          <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center gap-3">
+                              <i class="far fa-clock text-blue-500"></i>
+                              Pengaturan Jam Kerja
+                          </h3>
+                          
+                          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                              <div>
+                                  <label for="jam-masuk" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Masuk</label>
+                                  <input type="time" id="jam-masuk" value="08:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+                              </div>
+                              <div>
+                                  <label for="jam-istirahat-mulai" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Mulai Istirahat</label>
+                                  <input type="time" id="jam-istirahat-mulai" value="12:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+                              </div>
+                              <div>
+                                  <label for="jam-istirahat-selesai" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Selesai Istirahat</label>
+                                  <input type="time" id="jam-istirahat-selesai" value="13:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+                              </div>
+                              <div>
+                                  <label for="jam-keluar" class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Jam Keluar</label>
+                                  <input type="time" id="jam-keluar" value="17:00" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+                              </div>
+                          </div>
+                          
+                          <div>
+                              <label for="toleransi" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Toleransi Keterlambatan (menit)</label>
+                              <input type="number" id="toleransi" value="15" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+                          </div>
+                      </div>
+                      
+                      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+                          <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center gap-3">
+                              <i class="fas fa-map-marked-alt text-green-500"></i>
+                              Pengaturan Lokasi
+                          </h3>
+                          <div>
+                              <label for="radius" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Radius Absensi (meter)</label>
+                              <input type="number" id="radius" value="100" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+                              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Jarak maksimum dari titik pos untuk dapat melakukan absensi.</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
 
     <!-- ===== MODAL TAMBAH KARYAWAN ===== -->
     <div id="add-karyawan-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden">
@@ -380,18 +401,7 @@
                         <label for="pos-karyawan-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos</label>
                         <select id="pos-karyawan-input" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" required>
                             <option value="">Pilih Pos</option>
-                            <option value="Pos A">Pos A</option>
-                            <option value="Pos B">Pos B</option>
-                            <option value="Pos C">Pos C</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="shift-karyawan-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Shift</label>
-                        <select id="shift-karyawan-input" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" required>
-                            <option value="">Pilih Shift</option>
-                            <option value="Pagi">Pagi</option>
-                            <option value="Siang">Siang</option>
-                            <option value="Malam">Malam</option>
+                            
                         </select>
                     </div>
                     <div>
@@ -430,17 +440,7 @@
                     <div>
                         <label for="edit-pos-karyawan" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Pos</label>
                         <select id="edit-pos-karyawan" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" required>
-                            <option value="Pos A">Pos A</option>
-                            <option value="Pos B">Pos B</option>
-                            <option value="Pos C">Pos C</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="edit-shift-karyawan" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Shift</label>
-                        <select id="edit-shift-karyawan" class="w-full p-2 border bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" required>
-                            <option value="pagi">Pagi</option>
-                            <option value="siang">Siang</option>
-                            <option value="malam">Malam</option>
+                            
                         </select>
                     </div>
                 </div>

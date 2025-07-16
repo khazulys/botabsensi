@@ -31,7 +31,7 @@ async function handleIzinCommand({ sock, sender, nomorHp, text, userState, msg }
     }
 
     // 3. Cek apakah sudah ada absensi untuk hari ini
-    const today = moment().tz('Asia/Jakarta').startOf('day');
+    const today = moment().tz('Asia/Makassar').startOf('day');
     const tomorrow = moment(today).add(1, 'days');
 
     const absensiHariIni = await Absensi.findOne({
@@ -47,13 +47,13 @@ async function handleIzinCommand({ sock, sender, nomorHp, text, userState, msg }
       return;
     }
 
-    // 4. Atur state pengguna untuk menunggu bukti foto dan kirim pesan balasan
+    // 4. Atur state pengguna untuk menunggu bukti foto (shift dihilangkan)
     userState[sender] = {
       stage: 'menunggu_bukti_izin',
       karyawanId: karyawan._id,
       nomorHp: karyawan.nomorWa,
       posJaga: karyawan.pos,
-      shift: karyawan.shift,
+      // shift: karyawan.shift, // <-- Baris ini dihapus
       keterangan: keterangan,
     };
 
@@ -68,3 +68,4 @@ async function handleIzinCommand({ sock, sender, nomorHp, text, userState, msg }
 }
 
 module.exports = handleIzinCommand;
+

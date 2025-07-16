@@ -3,7 +3,7 @@ const moment = require('moment-timezone');
 /**
  * Ambil moment waktu masuk shift sesuai zona dan tanggal yang tepat (besok jika jam masuk < jam sekarang).
  */
-function getJamMasukMoment(jamMasukStr, zona = 'Asia/Jakarta') {
+function getJamMasukMoment(jamMasukStr, zona = 'Asia/Makassar') {
   const now = moment().tz(zona);
   let target = moment.tz(`${now.format('YYYY-MM-DD')} ${jamMasukStr}`, 'YYYY-MM-DD HH:mm', zona);
 

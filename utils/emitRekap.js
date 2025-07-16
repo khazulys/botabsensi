@@ -5,8 +5,8 @@ const moment = require('moment-timezone');
 
 async function emitRekapHariIni(io) {
     try {
-        const todayStart = moment().tz('Asia/Jakarta').startOf('day').toDate();
-        const todayEnd = moment().tz('Asia/Jakarta').endOf('day').toDate();
+        const todayStart = moment().tz('Asia/Makassar').startOf('day').toDate();
+        const todayEnd = moment().tz('Asia/Makassar').endOf('day').toDate();
 
         const [hadir, pulang, izin, alpha, totalKaryawan] = await Promise.all([
             Absensi.countDocuments({ tanggal: { $gte: todayStart, $lte: todayEnd }, status: 'hadir' }),

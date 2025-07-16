@@ -4,7 +4,7 @@ const moment = require('moment-timezone');
 
 async function emitGrafik(io) {
     const hariTerakhir = 5;
-    const startDate = moment().tz('Asia/Jakarta').subtract(hariTerakhir, 'days').startOf('day').toDate();
+    const startDate = moment().tz('Asia/Makassar').subtract(hariTerakhir, 'days').startOf('day').toDate();
 
     const hasil = await Absensi.aggregate([
         {

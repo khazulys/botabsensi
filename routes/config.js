@@ -7,15 +7,12 @@ const Config = require('../models/Config');
 router.get('/', async (req, res) => {
     try {
         let config = await Config.findOne({ identifier: 'main_config' });
+
         if (!config) {
-            // Jika tidak ada config, buat dan simpan data default
-            config = new Config({
-                shiftPagi: { aktif: true, jamMasuk: '06:00', jamKeluar: '14:00' },
-                shiftSiang: { aktif: true, jamMasuk: '14:00', jamKeluar: '22:00' },
-                shiftMalam: { aktif: true, jamMasuk: '22:00', jamKeluar: '06:00' },
-                toleransiKeterlambatan: 15,
-                radiusAbsensi: 100,
-            });
+            // Jika tidak ada config, buat dokumen baru.
+            // Nilai default akan otomatis diambil dari skema di models/Config.js
+            console.log('Tidak ada konfigurasi, membuat data default...');
+            config = new Config(); // Cukup panggil constructor kosong
             await config.save();
         }
         res.json(config);
@@ -27,7 +24,7 @@ router.get('/', async (req, res) => {
 // POST: Menyimpan atau Memperbarui konfigurasi
 router.post('/', async (req, res) => {
     try {
-        const configData = req.body;
+        const configData = req.body; // Menerima data dengan struktur baru { jamKerja: {...} }
         const updatedConfig = await Config.findOneAndUpdate(
             { identifier: 'main_config' },
             configData,

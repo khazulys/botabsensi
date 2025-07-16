@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
 // Rute untuk POST: Menambahkan karyawan baru
 router.post('/', async (req, res) => {
     try {
-        const { nama, nomorWa, pos, shift, status } = req.body;
+        const { nama, nomorWa, pos, status } = req.body;
 
         // === CEK DUPLIKAT NOMOR WA ===
         const existing = await Karyawan.findOne({ nomorWa });
@@ -28,7 +28,6 @@ router.post('/', async (req, res) => {
             nama,
             nomorWa,
             pos,
-            shift: shift.toLowerCase(),
             status
         });
 
