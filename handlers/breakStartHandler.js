@@ -14,7 +14,11 @@ async function handleBreakStartCommand({ sock, groupJid, nomorHp, msg }) {
         const todayStart = moment().tz('Asia/Makassar').startOf('day').toDate();
         const todayEnd = moment().tz('Asia/Makassar').endOf('day').toDate();
 
-        // === VALIDASI BARU DI SINI ===
+        const statusAlpha = await Absensi.findOne({ karyawan: karyawan._id, status: 'alpha', tanggal: { $gte: todayStart, $lte: todayEnd } });
+        if (statusAlpha) {
+            return await sock.sendMessage(groupJid, { text: `Anda tidak dapat istirahat karena status Anda hari ini sudah tercatat *Alpha*.` }, { "quoted": msg });
+        }
+
         const sudahPulang = await Absensi.findOne({ karyawan: karyawan._id, status: 'pulang', tanggal: { $gte: todayStart, $lte: todayEnd } });
         if (sudahPulang) {
             return await sock.sendMessage(groupJid, { text: 'Anda sudah absen pulang dan tidak bisa memulai istirahat.' }, { "quoted": msg });
@@ -34,8 +38,7 @@ async function handleBreakStartCommand({ sock, groupJid, nomorHp, msg }) {
         if (!config || !config.jamKerja.mulaiIstirahat) {
             return await sock.sendMessage(groupJid, { text: 'Jam istirahat belum diatur oleh admin.' }, { "quoted": msg });
         }
-
-        // Logika jendela waktu istirahat (tetap sama)
+        
         const { masuk, mulaiIstirahat, selesaiIstirahat } = config.jamKerja;
         const now = moment().tz('Asia/Makassar');
         const tanggalAcuan = moment(sudahHadir.tanggal).tz('Asia/Makassar');
@@ -47,7 +50,7 @@ async function handleBreakStartCommand({ sock, groupJid, nomorHp, msg }) {
         if (waktuSelesaiWindow.isBefore(waktuMulaiWindow)) waktuSelesaiWindow.add(1, 'day');
         
         if (now.isBefore(waktuMulaiWindow) || now.isAfter(waktuSelesaiWindow)) {
-            return await sock.sendMessage(groupJid, { text: `Waktu istirahat hanya dibuka dari pukul *${waktuMulaiWindow.format('HH:mm')}* hingga *${waktuSelesaiWindow.format('HH:mm')}* WIB.` }, { "quoted": msg });
+            return await sock.sendMessage(groupJid, { text: `Waktu istirahat hanya dibuka dari pukul *${waktuMulaiWindow.format('HH:mm')}* hingga *${waktuSelesaiWindow.format('HH:mm')}* WITA.` }, { "quoted": msg });
         }
 
         const absensiIstirahat = new Absensi({
@@ -61,7 +64,7 @@ async function handleBreakStartCommand({ sock, groupJid, nomorHp, msg }) {
         await absensiIstirahat.save();
 
         getIO().emit('absensi_baru', { ...absensiIstirahat.toObject(), karyawan: { nama: karyawan.nama, pos: karyawan.pos } });
-        await sock.sendMessage(groupJid, { text: `✅ Absen *istirahat* berhasil pada jam ${now.format('HH:mm')} WIB. Selamat beristirahat!` }, { "quoted": msg });
+        await sock.sendMessage(groupJid, { text: `✅ Absen *istirahat* berhasil pada jam ${now.format('HH:mm')} WITA. Selamat beristirahat!` }, { "quoted": msg });
 
     } catch (err) {
         console.error("Error pada !istirahat:", err);

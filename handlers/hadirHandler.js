@@ -10,25 +10,24 @@ async function handleHadirCommand({ sock, groupJid, userJid, nomorHp, userState,
             return await sock.sendMessage(groupJid, { text: 'Nomor Anda tidak terdaftar sebagai karyawan.' }, { "quoted": msg });
         }
 
-        // Cek absensi terakhir hari ini
         const todayStart = moment().tz('Asia/Makassar').startOf('day').toDate();
         const todayEnd = moment().tz('Asia/Makassar').endOf('day').toDate();
 
         const absensiTerakhirHariIni = await Absensi.findOne({
             karyawan: karyawan._id,
             tanggal: { $gte: todayStart, $lte: todayEnd }
-        }).sort({ createdAt: -1 }); // Ambil data paling baru
+        }).sort({ createdAt: -1 });
 
         if (absensiTerakhirHariIni) {
-            // === VALIDASI BARU DI SINI ===
+            if (absensiTerakhirHariIni.status === 'alpha') {
+                return await sock.sendMessage(groupJid, { text: `Anda tidak dapat melakukan absensi karena status Anda hari ini sudah tercatat *Alpha*.` }, { "quoted": msg });
+            }
             if (absensiTerakhirHariIni.status === 'pulang') {
                 return await sock.sendMessage(groupJid, { text: 'Anda sudah absen pulang hari ini. Silakan kembali besok untuk absen hadir kembali.' }, { "quoted": msg });
             }
-            // Jika statusnya bukan 'pulang', berarti sudah ada aktivitas lain (hadir, istirahat, dll)
             return await sock.sendMessage(groupJid, { text: `Anda sudah tercatat *${absensiTerakhirHariIni.status}* hari ini. Tidak bisa absen hadir lagi.` }, { "quoted": msg });
         }
 
-        // Logika jendela waktu (tetap sama)
         const config = await Config.findOne({ identifier: 'main_config' });
         if (!config || !config.jamKerja.masuk) {
              return await sock.sendMessage(groupJid, { text: 'Jam kerja belum diatur oleh admin.' }, { "quoted": msg });
@@ -41,7 +40,7 @@ async function handleHadirCommand({ sock, groupJid, userJid, nomorHp, userState,
 
         if (now.isBefore(waktuMulaiAbsen) || now.isAfter(waktuSelesaiAbsen)) {
             return await sock.sendMessage(groupJid, {
-                text: `*Absensi Gagal!* Jendela absensi hanya dibuka dari pukul *${waktuMulaiAbsen.format('HH:mm')}* hingga *${waktuSelesaiAbsen.format('HH:mm')}* WIB.`
+                text: `*Absensi Gagal!* Jendela absensi hanya dibuka dari pukul *${waktuMulaiAbsen.format('HH:mm')}* hingga *${waktuSelesaiAbsen.format('HH:mm')}* WITA.`
             }, { "quoted": msg });
         }
 
