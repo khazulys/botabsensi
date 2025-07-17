@@ -1,4 +1,4 @@
-// bot.js (Versi Final & Lengkap)
+// bot.js (Versi Final dengan Multi-Grup & Koneksi Stabil)
 
 // --- IMPORTS ---
 const {
@@ -13,6 +13,7 @@ const {
 const pino = require("pino");
 const readline = require("readline");
 const moment = require('moment-timezone');
+const fs = require('fs');
 
 // --- KONEKSI LOKAL ---
 const connectDB = require('./utils/db');
@@ -34,17 +35,27 @@ const handleBreakStartCommand = require('./handlers/breakStartHandler');
 const handleBreakEndCommand = require('./handlers/breakEndHandler');
 const setupAbsenReminders = require('./services/reminderService');
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const question = (text) => new Promise((resolve) => rl.question(text, resolve));
+// --- VARIABEL GLOBAL ---
+let rl;
 const userState = {};
+let retryCount = 0;
+const AUTH_SESSION_DIR = "baileys_auth_session";
+
+const question = (text) => {
+    if (!rl || rl.closed) {
+        rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    }
+    return new Promise((resolve) => rl.question(text, resolve));
+};
 
 async function startBot() {
-  connectDB(); // Tidak perlu 'await'
-  const { state, saveCreds } = await useMultiFileAuthState("baileys_auth_session");
+  connectDB();
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_SESSION_DIR);
   const { version } = await fetchLatestBaileysVersion();
+
   const sock = makeWASocket({
     version,
-    logger: pino({ level: "silent" }),
+    logger: pino({ level: "debug" }),
     printQRInTerminal: false,
     browser: Browsers.ubuntu("Chrome"),
     auth: {
@@ -61,14 +72,34 @@ async function startBot() {
     console.log(`\nKode Pairing Anda: ${code}\n`);
   }
 
-  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
-    if (connection === "close") {
-      const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) startBot();
-    } else if (connection === "open") {
-      console.log("Bot berhasil terhubung!");
-      setupAbsenReminders(sock);
-      rl.close();
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect } = update;
+    const MAX_RETRY = 5;
+
+    if (connection === 'open') {
+        console.log("✅ Bot berhasil terhubung! Mereset hitungan percobaan.");
+        retryCount = 0;
+        setupAbsenReminders(sock);
+        if (rl && !rl.closed) { rl.close(); }
+    } else if (connection === 'close') {
+        const statusCode = lastDisconnect.error?.output?.statusCode;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+        if (shouldReconnect) {
+            retryCount++;
+            if (retryCount <= MAX_RETRY) {
+                const delay = retryCount * 5000;
+                console.error(`❌ Koneksi terputus: ${lastDisconnect.error?.message}. Percobaan ke-${retryCount}. Mencoba lagi dalam ${delay / 1000} detik.`);
+                setTimeout(() => startBot(), delay);
+            } else {
+                console.error(`🛑 Gagal terhubung setelah ${MAX_RETRY} kali. Bot berhenti.`);
+                process.exit(1);
+            }
+        } else {
+             console.error('🛑 Perangkat ter-logout! Hapus folder sesi dan scan ulang.');
+             if (fs.existsSync(AUTH_SESSION_DIR)) { fs.rmSync(AUTH_SESSION_DIR, { recursive: true, force: true }); }
+             process.exit(1);
+        }
     }
   });
 
@@ -86,12 +117,26 @@ async function startBot() {
       const nomorHp = userJid.split('@')[0];
       const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase().trim();
       const currentState = userState[userJid] || {};
+
+      // =========================================================
+      // ===          FILTER GRUP MULTI-GRUP & DEBUGGING         ===
+      // =========================================================
+
+      const config = await Config.findOne({ identifier: 'main_config' });
+
+      // Menampilkan info debug di console setiap ada pesan masuk
+      console.log(`\n[DEBUG] Pesan: "${text}" | Dari Grup: ${groupJid}`);
+
+      // LOGIKA FILTER BARU: Cek apakah grup saat ini ada di dalam DAFTAR grup aktif
+      if (text !== '!setgrup' && config?.activeGroups && !config.activeGroups.includes(groupJid)) {
+        console.log(`[INFO] Pesan diabaikan. Grup ${groupJid} tidak ada dalam daftar aktif.`);
+        return;
+      }
       
       // =========================================================
       // ===         LOGIKA UTAMA & ALUR PERINTAH              ===
       // =========================================================
 
-      // 1. Perintah !batal untuk keluar dari state apapun
       if (text === '!batal') {
           if (currentState.stage) {
               delete userState[userJid];
@@ -101,12 +146,9 @@ async function startBot() {
           }
       }
 
-      // 2. Logika State-Machine: Jika pengguna dalam suatu proses
       if (currentState.stage) {
           const messageType = Object.keys(msg.message)[0];
-          const config = await Config.findOne({ identifier: 'main_config' }); // Diperlukan untuk validasi
 
-          // --- FLOW MENUNGGU LOKASI (UNTUK HADIR & PULANG) ---
           if (messageType === 'locationMessage' && (currentState.stage === 'menunggu_lokasi' || currentState.stage === 'pulang_menunggu_lokasi')) {
               try {
                   const { degreesLatitude, degreesLongitude } = msg.message.locationMessage;
@@ -122,9 +164,7 @@ async function startBot() {
                       throw new Error(`Anda berada ${Math.round(jarak)} meter dari pos. Batas: ${config.radiusAbsensi} meter.`);
                   }
                   
-                  let nextStage = '';
-                  if (currentState.stage === 'menunggu_lokasi') nextStage = 'menunggu_foto_hadir';
-                  if (currentState.stage === 'pulang_menunggu_lokasi') nextStage = 'menunggu_foto_pulang';
+                  let nextStage = (currentState.stage === 'menunggu_lokasi') ? 'menunggu_foto_hadir' : 'menunggu_foto_pulang';
 
                   userState[userJid] = {
                       stage: nextStage,
@@ -139,7 +179,6 @@ async function startBot() {
               return;
           }
 
-          // --- FLOW MENUNGGU FOTO (UNTUK HADIR & PULANG) ---
           if (messageType === 'imageMessage' && (currentState.stage === 'menunggu_foto_hadir' || currentState.stage === 'menunggu_foto_pulang')) {
               try {
                   const buffer = await downloadMediaMessage(msg, "buffer", {});
@@ -147,9 +186,9 @@ async function startBot() {
                   const now = moment().tz('Asia/Makassar');
                   const karyawan = await Karyawan.findById(currentState.karyawanId);
                   
-                  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${currentState.lokasi.lat},${currentState.lokasi.lon}`;
-                  const lokasiLink = `<a href="${mapsLink}" target="_blank" class="text-blue-500 hover:underline">Lihat lokasi</a>`;
-                  const buktiLink = `<a href="${imgUrl}" target="_blank" class="text-blue-500 hover:underline">Lihat bukti</a>`;
+                  const mapsLink = `http://maps.google.com/maps?q=${currentState.lokasi.lat},${currentState.lokasi.lon}`;
+                  const lokasiLink = `<a href="${mapsLink}" target="_blank">Lihat Lokasi</a>`;
+                  const buktiLink = `<a href="${imgUrl}" target="_blank">Lihat Bukti</a>`;
                   const lokasiGabungan = `${lokasiLink} | ${buktiLink}`;
           
                   let absensiData = {
@@ -194,8 +233,6 @@ async function startBot() {
               return;
           }
 
-          // --- FLOW IZIN: Menunggu Foto Bukti ---
-          // --- FLOW IZIN: Menunggu Foto Bukti ---
           if (messageType === 'imageMessage' && currentState.stage === 'menunggu_bukti_izin') {
               try {
                   const buffer = await downloadMediaMessage(msg, "buffer", {});
@@ -203,8 +240,7 @@ async function startBot() {
                   const now = moment().tz('Asia/Makassar');
                   const karyawan = await Karyawan.findById(currentState.karyawanId);
           
-                  // --- PERBAIKAN DI SINI: Membuat Link Bukti ---
-                  const buktiLink = `<a href="${imgUrl}" target="_blank" class="text-blue-500 hover:underline">Lihat bukti</a>`;
+                  const buktiLink = `<a href="${imgUrl}" target="_blank">Lihat Bukti</a>`;
           
                   const izinBaru = new Absensi({
                       karyawan: currentState.karyawanId,
@@ -215,7 +251,7 @@ async function startBot() {
                       tanggal: now.toDate(),
                       keterangan: currentState.keterangan,
                       buktiFoto: imgUrl,
-                      lokasi: buktiLink, // <-- Menyimpan link ke field 'lokasi'
+                      lokasi: buktiLink,
                   });
                   await izinBaru.save();
           
@@ -229,116 +265,38 @@ async function startBot() {
               return;
           }
 
-
-          // --- FLOW SELESAI ISTIRAHAT ---
-          if (messageType === 'locationMessage' && currentState.stage === 'selesai_istirahat_menunggu_lokasi') {
-              const location = msg.message.locationMessage;
-              userState[userJid] = {
-                  ...currentState,
-                  stage: 'selesai_istirahat_menunggu_foto',
-                  lokasi: { latitude: location.degreesLatitude, longitude: location.degreesLongitude }
-              };
-              await sock.sendMessage(groupJid, { text: '✅ Lokasi diterima. Sekarang, silakan kirim *foto selfie* Anda.' }, { "quoted": msg });
-              return;
-          }
-
-          if (messageType === 'imageMessage' && currentState.stage === 'selesai_istirahat_menunggu_foto') {
-              try {
-                  const karyawan = await Karyawan.findById(currentState.karyawanId);
-                  const posJaga = await PosJaga.findOne({ namaPos: karyawan.pos });
-                  if (!posJaga) throw new Error(`Pos jaga "${karyawan.pos}" tidak ditemukan.`);
-          
-                  const posKoordinat = extractLatLonFromLink(posJaga.lokasiPos);
-                  const jarak = getDistance(currentState.lokasi, posKoordinat);
-          
-                  if (jarak > config.radiusAbsensi) {
-                      delete userState[userJid];
-                      return await sock.sendMessage(groupJid, { text: `❌ *Absen Gagal!* Lokasi Anda (${jarak.toFixed(0)}m) di luar radius pos Anda (${config.radiusAbsensi}m).` }, { "quoted": msg });
-                  }
-          
-                  const buffer = await downloadMediaMessage(msg, "buffer", {});
-                  const photoUrl = await uploadToImgur(buffer.toString('base64'));
-                  const now = moment().tz('Asia/Makassar');
-                  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${currentState.lokasi.latitude},${currentState.lokasi.longitude}`;
-                  const lokasiLink = `<a href="${mapsLink}" target="_blank" class="text-blue-500 hover:underline">Lihat lokasi</a>`;
-                  const buktiLink = `<a href="${photoUrl}" target="_blank" class="text-blue-500 hover:underline">Lihat bukti</a>`;
-                  const lokasiGabungan = `${lokasiLink} | ${buktiLink}`;
-          
-                  const waktuSelesaiJadwal = moment(config.jamKerja.selesaiIstirahat, 'HH:mm').tz('Asia/Makassar', true);
-                  const selisihMenit = now.diff(waktuSelesaiJadwal, 'minutes');
-                  const keteranganTelat = selisihMenit > 0 ? `Telat ${selisihMenit} menit` : null;
-          
-                  const absensiSelesai = new Absensi({
-                      karyawan: currentState.karyawanId,
-                      nomorHp: karyawan.nomorWa,
-                      posJaga: karyawan.pos,
-                      status: 'selesai istirahat',
-                      jam: now.format('HH:mm'),
-                      tanggal: now.toDate(),
-                      latitude: currentState.lokasi.latitude,
-                      longitude: currentState.lokasi.longitude,
-                      buktiFoto: photoUrl,
-                      keterangan: keteranganTelat,
-                      lokasi: lokasiGabungan,
-                  });
-                  await absensiSelesai.save();
-                  
-                  let pesanBalasan = `✅ Absen *selesai istirahat* berhasil pada jam ${now.format('HH:mm')} WITA. Selamat bekerja kembali, *${karyawan.nama}*.`;
-                  if (keteranganTelat) pesanBalasan += `\n\n*Catatan: ${keteranganTelat}*`;
-          
-                  getIO().emit('absensi_baru', { ...absensiSelesai.toObject(), karyawan: { nama: karyawan.nama, pos: karyawan.pos } });
-                  await sock.sendMessage(groupJid, { text: pesanBalasan }, { "quoted": msg });
-              
-              } catch (err) {
-                   await sock.sendMessage(groupJid, { text: `Gagal memproses foto: ${err.message}` }, { "quoted": msg });
-              } finally {
-                  delete userState[userJid];
-              }
-              return;
-          }
-
-          // --- JIKA INPUT TIDAK SESUAI DENGAN YANG DIHARAPKAN DALAM SEBUAH STAGE ---
           const stageInfo = currentState.stage.replace(/_/g, ' ').replace('menunggu ', '');
           await sock.sendMessage(groupJid, { 
               text: `Bot sedang menunggu *${stageInfo}*. Silakan kirim data yang sesuai atau ketik *!batal* untuk membatalkan.` 
           }, { "quoted": msg });
           
-          return; // Hentikan proses agar tidak lanjut ke routing perintah teks
+          return;
       }
       
       // =========================================================
       // ===          ROUTING PERINTAH BERBASIS TEKS           ===
       // =========================================================
       if (!text) return;
-
-      const config = await Config.findOne({ identifier: 'main_config' });
-      if (text !== '!setgrup' && config?.grupAbsensiId && groupJid !== config.grupAbsensiId) {
-        return;
-      }
       
       const command = text.split(' ')[0];
       const commonParams = { sock, groupJid, userJid, nomorHp, userState, msg, text };
-
       const commandMap = {
-        '!hadir': handleHadirCommand,
-        '!masuk': handleHadirCommand,
-        '!pulang': handleOutCommand,
-        '!keluar': handleOutCommand,
-        '!izin': handleIzinCommand,
-        '!istirahat': handleBreakStartCommand,
-        '!selesaiistirahat': handleBreakEndCommand,
-        '!setgrup': handleSetGroupCommand,
+        '!hadir': handleHadirCommand, '!masuk': handleHadirCommand,
+        '!pulang': handleOutCommand, '!keluar': handleOutCommand,
+        '!izin': handleIzinCommand, '!istirahat': handleBreakStartCommand,
+        '!selesaiistirahat': handleBreakEndCommand, '!setgrup': handleSetGroupCommand,
         '!info': handleInfoCommand
       };
 
       if (commandMap[command]) {
-        if (command === '!setgrup') await handleSetGroupCommand({ sock, msg });
-        else await commandMap[command](commonParams);
+        await commandMap[command](commonParams);
       }
+
     } catch (error) {
-      console.error("Error utama dalam 'messages.upsert':", error);
+      console.error("❌ Error utama dalam 'messages.upsert':", error);
     }
   });
 }
 
+// Memulai bot
 startBot();
